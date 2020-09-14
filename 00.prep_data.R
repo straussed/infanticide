@@ -51,7 +51,7 @@ load('Data/all_cubs.RData')
 
 cubs$birth_year <- as.numeric(format(cubs$dob, '%Y'))
 
-left_join(cubs, tblFemaleRanks, by = c('mom', ))
+cubs$stan_rank <- left_join(cubs, tblFemaleRanks, by = c('mom' = 'id', 'birth_year' = 'year'))$stan_rank
 
 save(list = ls(), 
      file = '01.tidied_data.RData')

@@ -57,13 +57,23 @@ cubs$mom_rank <- left_join(cubs, tblFemaleRanks, by = c('mom' = 'id', 'birth_yea
 cubs$birth_year_next <- cubs$birth_year + 1
 cat('Number of cubs whose rank was determined from subsequent year: ', 
     sum(!is.na(left_join(cubs[is.na(cubs$mom_rank),], tblFemaleRanks, by = c('mom' = 'id', 'birth_year_next' = 'year'))$stan_rank)))  ## 37
-cubs[is.na(cubs$mom_rank),]$stan_rank <- left_join(cubs[is.na(cubs$mom_rank),], tblFemaleRanks, by = c('mom' = 'id', 'birth_year_next' = 'year'))$stan_rank
+cubs[is.na(cubs$mom_rank),]$mom_rank <- left_join(cubs[is.na(cubs$mom_rank),], tblFemaleRanks, by = c('mom' = 'id', 'birth_year_next' = 'year'))$stan_rank
 
-## If mother has no rank assigned for birth year, check one year later (young mothers)
+## If mother has no rank assigned for birth year, check one year prior (end of rank data)
 cubs$birth_year_prev <- cubs$birth_year - 1
 cat('Number of cubs whose rank was determined from previous year: ', 
     sum(!is.na(left_join(cubs[is.na(cubs$mom_rank),], tblFemaleRanks, by = c('mom' = 'id', 'birth_year_prev' = 'year'))$stan_rank)))  ## 76
-cubs[is.na(cubs$mom_rank),]$stan_rank <- left_join(cubs[is.na(cubs$mom_rank),], tblFemaleRanks, by = c('mom' = 'id', 'birth_year_prev' = 'year'))$stan_rank
+cubs[is.na(cubs$mom_rank),]$mom_rank <- left_join(cubs[is.na(cubs$mom_rank),], tblFemaleRanks, by = c('mom' = 'id', 'birth_year_prev' = 'year'))$stan_rank
+
+## Assign cub mortality from known_mortality
+cubs[is.na(cubs$mortality),]$mortality <- left_join(cubs[is.na(cubs$mortality),], known_mortality, by = c('id'))$mortality.y
+
+## Assign cub mortality from unknown
+cubs[is.na(cubs$mortality),]$mortality <- left_join(cubs[is.na(cubs$mortality),], unknown, by = c('id'))$mortality.y
+
+table(cubs$mortality)
+
+cubs <- cubs[c('id', 'mom', 'dob', 'mortality', 'mom_rank')]
 
 save(list = ls(), 
      file = '01.tidied_data.RData')

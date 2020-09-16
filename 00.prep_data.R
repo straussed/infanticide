@@ -49,9 +49,21 @@ load('Data/tblFemaleRanks.RData')
 ## Load data from all cubs from primary study groups, even those that survive >1yr
 load('Data/all_cubs.RData')
 
+## Determine rank of mother in cubs year of birth.
 cubs$birth_year <- as.numeric(format(cubs$dob, '%Y'))
+cubs$mom_rank <- left_join(cubs, tblFemaleRanks, by = c('mom' = 'id', 'birth_year' = 'year'))$stan_rank
 
-cubs$stan_rank <- left_join(cubs, tblFemaleRanks, by = c('mom' = 'id', 'birth_year' = 'year'))$stan_rank
+## If mother has no rank assigned for birth year, check one year later (young mothers)
+cubs$birth_year_next <- cubs$birth_year + 1
+cat('Number of cubs whose rank was determined from subsequent year: ', 
+    sum(!is.na(left_join(cubs[is.na(cubs$mom_rank),], tblFemaleRanks, by = c('mom' = 'id', 'birth_year_next' = 'year'))$stan_rank)))  ## 37
+cubs[is.na(cubs$mom_rank),]$stan_rank <- left_join(cubs[is.na(cubs$mom_rank),], tblFemaleRanks, by = c('mom' = 'id', 'birth_year_next' = 'year'))$stan_rank
+
+## If mother has no rank assigned for birth year, check one year later (young mothers)
+cubs$birth_year_prev <- cubs$birth_year - 1
+cat('Number of cubs whose rank was determined from previous year: ', 
+    sum(!is.na(left_join(cubs[is.na(cubs$mom_rank),], tblFemaleRanks, by = c('mom' = 'id', 'birth_year_prev' = 'year'))$stan_rank)))  ## 76
+cubs[is.na(cubs$mom_rank),]$stan_rank <- left_join(cubs[is.na(cubs$mom_rank),], tblFemaleRanks, by = c('mom' = 'id', 'birth_year_prev' = 'year'))$stan_rank
 
 save(list = ls(), 
      file = '01.tidied_data.RData')

@@ -1,136 +1,335 @@
-
-###############Analyze Cause Infant Mortality-Ally Brown 24 October, 2018##############
-###Load libraries and set global options
-rm(list = ls())
-library(tidyverse)
-library(survminer)
-library(gridExtra)
+library(brms)
+library(dplyr)
+library(tidyr)
+library(here)
+library(grid)
 library(ggridges)
-options(stringsAsFactors = FALSE)
-#setwd('L:\\CurrentGradStudents/StraussEli/Infanticide/Final_analysis/')
-setwd('/Volumes/Holekamp/CurrentGradStudents/StraussEli/Infanticide/Final_analysis/')
-load('01.tidied_data.RData')
+library(ggplot2)
+library(gridExtra)
 
-# 
-###Observed frequencies of mortality sources
-summarized_mortality <- summarize(select(group_by(known_mortality,mortality),mortality),frequency = length(mortality))
-summarized_mortality <- arrange(summarized_mortality,desc(frequency))
-summarized_mortality$mortality <- factor(summarized_mortality$mortality, levels = summarized_mortality$mortality)
-summarized_mortality$obs_inf <- 'observed'
+load(file = here('Data/cub_data.RData'))
 
+known.mortality <- filter(all.mortality, mortality != 'unknown')
+unknown.mortality <- filter(all.mortality, mortality == 'unknown')
 
-#### Inferred frequenceis of mortality sources 
+## Assign mortality to be mom death
+known.mortality[is.na(known.mortality$mom_disappeared),'mom_disappeared'] <- FALSE
+known.mortality[known.mortality$mom_disappeared,]$mortality <- 'death of mother'
+um.death.of.mother <- filter(unknown.mortality, mom_disappeared == TRUE)
+um.death.of.mother$mortality <- 'death of mother'
+unknown.mortality <- filter(unknown.mortality, mom_disappeared == FALSE)
+#known.mortality <- rbind(known.mortality, um.death.of.mother)
 
-### Proportion of mom death associated with starvation
-table(filter(known_mortality, mom_disappeared == TRUE)[,c('mortality')])
+known.mortality$infanticide <- as.numeric(known.mortality$mortality == 'infanticide')
+known.mortality$starvation <- as.numeric(known.mortality$mortality == 'starvation')
+known.mortality$lion <- as.numeric(known.mortality$mortality == 'lion')
+known.mortality$human <- as.numeric(known.mortality$mortality == 'human')
+known.mortality$siblicide <- as.numeric(known.mortality$mortality == 'siblicide')
+## Combine illness and flooded den
+known.mortality$other <- as.numeric(known.mortality$mortality %in% c('illness', 'flooded den'))
+known.mortality[known.mortality$mortality %in% c('illness', 'flooded den'),'mortality'] <- 'other'
 
-### Proportion of starvation deaths associated with  mom's death
-table(filter(known_mortality, mortality == 'starvation')$mom_disappeared)
-nrow(filter(known_mortality, mortality == 'starvation'))
-
-### Number of unknown mortality where mom disappeared
-nrow(filter(unknown, mom_disappeared == TRUE))
-
-known_mortality_mom_alive <- filter(known_mortality, mom_disappeared==FALSE)
-mortality.sources <- unique(known_mortality_mom_alive$mortality)
-
-summarized_mortality_inferred <- summarized_mortality
-summarized_mortality_inferred$obs_inf <- 'inferred'
-summarized_mortality_inferred$frequency <- 
-  nrow(filter(unknown, !mom_disappeared | is.na(mom_disappeared))) * 
-  (table(known_mortality_mom_alive$mortality)[mortality.sources]/
-  sum(table(known_mortality_mom_alive$mortality)[mortality.sources]))[as.character(summarized_mortality_inferred$mortality)]
-
-summarized_mortality_inferred$frequency[summarized_mortality_inferred$mortality == 'starvation'] <- 
-  summarized_mortality_inferred$frequency[summarized_mortality_inferred$mortality == 'starvation']  +
-  nrow(filter(unknown, mom_disappeared))
-
-summarized_mortality <- rbind(summarized_mortality, summarized_mortality_inferred)
-
-### Bootstrap to get confidence interval
-mortality.bootstraps <- matrix(data = NA, nrow = length(mortality.sources),
-                               ncol = 1001, dimnames = list(mortality.sources, 1:1001))
-mortality.bootstraps[,1] <- table(known_mortality_mom_alive$mortality)[mortality.sources]/sum(table(known_mortality_mom_alive$mortality)[mortality.sources])
-for(i in 2:1001){
-  mortality.samples <- sample(replace = TRUE, known_mortality_mom_alive$mortality)
-  mortality.bootstraps[,i] <- table(mortality.samples)[mortality.sources]/sum(table(known_mortality_mom_alive$mortality)[mortality.sources])
-}
+known.mortality$y <- as.matrix(known.mortality[,c('infanticide', 'starvation', 'lion', 'siblicide',
+                                                  'human','other')])
 
 
-###Errorbars from bootstraps
-mortality.bootstraps <- as.data.frame(t(mortality.bootstraps))
-mortality.bootstraps[is.na(mortality.bootstraps)] <- 0
+known.mortality.mom.alive <- filter(known.mortality, mom_disappeared == FALSE)
 
-boot.ci <- as.data.frame(t(apply(X = data.frame(t(mortality.bootstraps)),
-                                 MARGIN = 1, 
-                                 FUN = quantile, c(0.975, 0.025)))) * nrow(filter(unknown, !mom_disappeared))
-names(boot.ci) <- c('upper', 'lower')
-boot.ci$x <- rownames(boot.ci)
-boot.ci[as.character(filter(summarized_mortality, obs_inf == 'observed')$mortality),]$upper <- 
-  boot.ci[as.character(filter(summarized_mortality, obs_inf == 'observed')$mortality),]$upper + 
-  filter(summarized_mortality, obs_inf == 'observed')$frequency
-
-boot.ci[as.character(filter(summarized_mortality, obs_inf == 'observed')$mortality),]$lower <- 
-  boot.ci[as.character(filter(summarized_mortality, obs_inf == 'observed')$mortality),]$lower + 
-  filter(summarized_mortality, obs_inf == 'observed')$frequency
-
-boot.ci['starvation',1:2] <- boot.ci['starvation',1:2] + nrow(filter(unknown, mom_disappeared))
+# known.mortality$siblicide <- as.numeric(known.mortality$mortality == 'siblicide')
+# known.mortality$illness <- as.numeric(known.mortality$mortality == 'illness')
+# known.mortality$flooded.den <- as.numeric(known.mortality$mortality == 'flooded den')
+# known.mortality$y <- as.matrix(known.mortality[,c('infanticide', 'starvation', 'lion',
+#                                               'human','siblicide', 'illness', 'flooded.den')])
 
 
 
-### Plotting
+### Build model
 
-lighten <- function(color, factor=1.4){
-  col <- col2rgb(color)
-  col <- col*factor
-  col <- rgb(t(col), maxColorValue=255)
-  col
-}
+## Priors
 
-desat <- function(cols, sat=0.5) {
-  X <- diag(c(1, sat, 1)) %*% rgb2hsv(col2rgb(cols))
-  hsv(X[1,], X[2,], X[3,])
-}
+## Model
+fit <- brm(data = known.mortality.mom.alive, formula = bf(y| trials(1) ~ 1 + poly(age_at_death, 2)), family = multinomial())
 
 
-col1 <- rgb(red = 62, green = 118, blue = 73, maxColorValue = 255)
-col2 <- desat(lighten(col1))
-
-summarized_mortality$obs_inf <- factor(summarized_mortality$obs_inf,
-                                       labels = c('Inferred mortality source', 'Known mortality source'))
+## Model diagnostics
 
 
-age.by.mortality <- rbind(known_mortality[,c('mortality', 'age_at_death')],
-                          unknown[,c('mortality', 'age_at_death')])
+
+### Predictions
+pred.fit <- posterior_predict(fit, newdata = unknown.mortality, nsamples = 200)
+
+posterior.means <- apply(pred.fit, 3, function(x)(sum(x/200)))
+probs <- apply(pred.fit, c(2,3), function(x)(sum(x/200)))
+posterior.draws <- apply(pred.fit, c(1,3), sum)
+posterior.cred.int <- apply(posterior.draws, 2, quantile, c(0.95, 0.05))
+
+post.ci <- data.frame(mortality = rownames(t(posterior.cred.int)),
+                      t(posterior.cred.int))
+post.ci[,2:3] <- post.ci[,2:3] + table(known.mortality.mom.alive$mortality)[post.ci$mortality]
+names(post.ci) <- c('mortality', 'high', 'low')
+                      
+
+
+
+
+smooth.pred <- posterior_epred(fit, newdata = data.frame(age_at_death = seq(from = 0, to = 12, by = 0.5)),
+                               nsamples = 200)
+smooth.probs <- data.frame(apply(smooth.pred, c(2,3), mean))
+smooth.probs$age <- seq(from = 0, to = 12, by = 0.5)
+smooth.probs.high <- data.frame(apply(smooth.pred, c(2,3), quantile, 0.95))
+smooth.probs.high$age <- seq(from = 0, to = 12, by = 0.5)
+smooth.probs.low <- data.frame(apply(smooth.pred, c(2,3), quantile, 0.05))
+smooth.probs.low$age <- seq(from = 0, to = 12, by = 0.5)
+
+
+
+### Prepare data for plotting
+summarized.mortality <- data.frame(mortality = names(table(known.mortality$mortality)),
+                                   frequency = as.numeric(table(known.mortality$mortality)),
+                                   obs.inf = 'observed')
+
+summarized.mortality$mortality <- factor(summarized.mortality$mortality,
+                                         levels = c( 'other', 'human',
+                                                     'siblicide', 'starvation', 'lion','infanticide', 'death of mother',
+                                                     'unknown'))
+
+summarized.mortality <- rbind(summarized.mortality,
+                              data.frame(mortality = c(names(posterior.means), 'death of mother', 'unknown'),
+                                         frequency = c(posterior.means, nrow(um.death.of.mother), NA),
+                                         obs.inf = 'inferred'))
+
+age.by.mortality <- rbind(known.mortality[,c('mortality', 'age_at_death')],
+                          unknown.mortality[,c('mortality', 'age_at_death')])
 
 age.by.mortality$mortality <- factor(age.by.mortality$mortality, 
-                                     levels = c('flooded den', 'illness',
-                                                'siblicide', 'human', 'lion',
-                                                'infanticide','starvation','unknown'))
+                                     levels = c( 'other', 'human',
+                                                 'siblicide', 'starvation', 'lion','infanticide', 'death of mother',
+                                                 'unknown'))
 
-levs = c('flooded den', 'illness',
-           'siblicide', 'human', 'lion',
-           'infanticide','starvation','unknown')
+levs = c( 'other', 'human',
+          'siblicide', 'starvation', 'lion', 'infanticide', 'death of mother',  'unknown')
 levs.ss <- paste0(levs, '\n(n = ', table(age.by.mortality$mortality), ')')
 
 age.by.mortality$mortality <- factor(age.by.mortality$mortality, 
-                                     levels = c('flooded den', 'illness',
-                                                'siblicide', 'human', 'lion',
-                                                'infanticide','starvation','unknown'),
+                                     levels = c( 'other', 'human',
+                                                 'siblicide', 'starvation', 'lion','infanticide', 'death of mother',
+                                                 'unknown'),
                                      labels = levs.ss)
 
 
-ggplot(age.by.mortality, aes(x = age_at_death, y = mortality))+
-  geom_density_ridges()+
-  theme_survminer()+
-  xlab('Age at death (months)')+
-  ylab('Mortality source')
+
+#### Plotting 
+ggplot(data = smooth.probs, aes(x = age, y = infanticide))+
+  geom_density(data= filter(known.mortality, mortality == 'infanticide'), aes(x = age_at_death), inherit.aes = FALSE)+
+  geom_line(color = 'red', size= 1)+
+  geom_line(data = smooth.probs.high, lty = 2, color = 'red')+
+  geom_line(data = smooth.probs.low, lty = 2, color = 'red')+
+  theme_classic(base_size = 14)+
+  ylim(c(0,1))+
+  xlab('Age (months)')+
+  theme()
 
 
-### Both together
+dev.off()
+
+
+png('Plots/prob_mortality_source.png', width = 7, height = 5,
+    res = 400, units = 'in')
+par(mfrow = c(2,3),
+    mar = c(0,0,0,0),
+    oma = c(4,4,1,1), family = 'sans')
+
+## Infanticide 
+plot(x = smooth.probs$age, 
+     y = smooth.probs$infanticide, 
+     col = 'black', 
+     type = 'l', 
+     lwd = 2,
+     ylim = c(0,1.1),
+     xlab = 'Age',
+     ylab = '',
+     yaxt = 'n',
+     xaxt = 'n')
+
+lines(x = smooth.probs.high$age, 
+     y = smooth.probs.high$infanticide, 
+     col = 'black', 
+     type = 'l', 
+     lty = 2,
+     lwd = 1,
+     ylim = c(0,1))
+
+lines(x = smooth.probs.low$age, 
+      y = smooth.probs.low$infanticide, 
+      col = 'black', 
+      type = 'l', 
+      lty = 2,
+      lwd = 1,
+      ylim = c(0,1))
+title(main = 'infanticide', line = -2)
+axis(side = 2, at = c(0,0.5, 1), labels = TRUE, outer = TRUE)
+
+## Lions 
+plot(x = smooth.probs$age, 
+     y = smooth.probs$lion, 
+     col = 'black', 
+     type = 'l', 
+     lwd = 2,
+     ylim = c(0,1.1),
+     xlab = 'Age',
+     ylab = '',
+     yaxt = 'n',
+     xaxt = 'n')
+title(main = 'lions', line = -2)
+
+lines(x = smooth.probs.high$age, 
+      y = smooth.probs.high$lion, 
+      col = 'black', 
+      type = 'l', 
+      lty = 2,
+      lwd = 1,
+      ylim = c(0,1))
+
+lines(x = smooth.probs.low$age, 
+      y = smooth.probs.low$lion, 
+      col = 'black', 
+      type = 'l', 
+      lty = 2,
+      lwd = 1,
+      ylim = c(0,1))
+
+
+
+## Starvation 
+plot(x = smooth.probs$age, 
+     y = smooth.probs$starvation, 
+     col = 'black', 
+     type = 'l', 
+     lwd = 2,
+     ylim = c(0,1.1),
+     xlab = 'Age',
+     ylab = '',
+     yaxt = 'n',
+     xaxt = 'n')
+
+lines(x = smooth.probs.high$age, 
+      y = smooth.probs.high$starvation, 
+      col = 'black', 
+      type = 'l', 
+      lty = 2,
+      lwd = 1,
+      ylim = c(0,1))
+
+lines(x = smooth.probs.low$age, 
+      y = smooth.probs.low$starvation, 
+      col = 'black', 
+      type = 'l', 
+      lty = 2,
+      lwd = 1,
+      ylim = c(0,1))
+title(main = 'starvation', line = -2)
+
+
+
+## Humans 
+plot(x = smooth.probs$age, 
+     y = smooth.probs$human, 
+     col = 'black', 
+     type = 'l', 
+     lwd = 2,
+     ylim = c(0,1.1),
+     xlab = 'Age',
+     ylab = '',
+     yaxt = 'n',
+     xaxt = 'n')
+
+lines(x = smooth.probs.high$age, 
+      y = smooth.probs.high$human, 
+      col = 'black', 
+      type = 'l', 
+      lty = 2,
+      lwd = 1,
+      ylim = c(0,1))
+
+lines(x = smooth.probs.low$age, 
+      y = smooth.probs.low$human, 
+      col = 'black', 
+      type = 'l', 
+      lty = 2,
+      lwd = 1,
+      ylim = c(0,1))
+title(main = 'humans', line = -2)
+axis(side = 1, at = c(0,6,12), labels = TRUE, outer = TRUE)
+mtext('Probability of mortality source', side = 2, line = 2,at = 1)
+axis(side = 2, at = c(0,0.5, 1), labels = TRUE, outer = TRUE)
+
+## Siblicide 
+plot(x = smooth.probs$age, 
+     y = smooth.probs$siblicide, 
+     col = 'black', 
+     type = 'l', 
+     lwd = 2,
+     ylim = c(0,1.1),
+     ylab = '',
+     yaxt = 'n',
+     xaxt = 'n')
+
+lines(x = smooth.probs.high$age, 
+      y = smooth.probs.high$siblicide, 
+      col = 'black', 
+      type = 'l', 
+      lty = 2,
+      lwd = 1,
+      ylim = c(0,1))
+
+lines(x = smooth.probs.low$age, 
+      y = smooth.probs.low$siblicide, 
+      col = 'black', 
+      type = 'l', 
+      lty = 2,
+      lwd = 1,
+      ylim = c(0,1))
+title(main = 'siblicide', line = -2)
+axis(side = 1, at = c(0,6,12), labels = TRUE, outer = TRUE)
+mtext('Age at death (months)', side = 1, line = 2)
+
+## Other 
+plot(x = smooth.probs$age, 
+     y = smooth.probs$other, 
+     col = 'black', 
+     type = 'l', 
+     lwd = 2,
+     ylim = c(0,1.1),
+     xlab = 'Age',
+     ylab = '',
+     yaxt = 'n',
+     xaxt = 'n')
+title(main = 'other', line = -2)
+
+lines(x = smooth.probs.high$age, 
+      y = smooth.probs.high$other, 
+      col = 'black', 
+      type = 'l', 
+      lty = 2,
+      lwd = 1,
+      ylim = c(0,1))
+
+lines(x = smooth.probs.low$age, 
+      y = smooth.probs.low$other, 
+      col = 'black', 
+      type = 'l', 
+      lty = 2,
+      lwd = 1,
+      ylim = c(0,1))
+axis(side = 1, at = c(0,6,12), labels = TRUE, outer = TRUE)
+
+dev.off()
+
+
+
 ages <- ggplot(age.by.mortality, aes(x = age_at_death, y = mortality, fill = mortality))+
-  geom_density_ridges(scale = 1.6)+
-  theme_survminer()+
+  geom_density_ridges(scale = 1.6, panel_scaling = FALSE)+
+  theme_classic(base_size = 14)+
   theme(legend.position = 'none')+
   xlab('Age at death (months)')+
   ylab('Mortality source')+
@@ -139,20 +338,11 @@ ages <- ggplot(age.by.mortality, aes(x = age_at_death, y = mortality, fill = mor
 
 
 
-summarized.mortality.combined.plots <- rbind(summarized_mortality,
-                                             data.frame(mortality = rep(factor('unknown'), 2),
-                                                        frequency = rep(NA,2),
-                                                        obs_inf = c('Known mortality source', 'Inferred mortality source')))
-summarized.mortality.combined.plots$mortality <- factor(summarized.mortality.combined.plots$mortality,
-                                                        levels = c('flooded den', 'illness',
-                                                                   'siblicide', 'human', 'lion',
-                                                                   'infanticide','starvation','unknown'))
 
-
-counts <- ggplot(data=summarized.mortality.combined.plots,aes(x=mortality, y = frequency, width=0.8, color = obs_inf,
-                                     fill = obs_inf))+
+counts <- ggplot(data=summarized.mortality,aes(x=mortality, y = frequency, width=0.8, color = obs.inf,
+                                                              fill = obs.inf))+
   geom_bar(stat = 'identity')+
-  theme_survminer()+
+  theme_classic(base_size = 14)+
   xlab("Source of Mortality")+
   ylab("Count")+
   scale_fill_manual(values = c('gray85', 'grey30'))+
@@ -164,8 +354,9 @@ counts <- ggplot(data=summarized.mortality.combined.plots,aes(x=mortality, y = f
         axis.ticks.y = element_blank(),
         axis.title.y = element_blank(),
         plot.margin = unit(c(4,0,6,0), units = 'pt'))+
-  geom_errorbar(data = boot.ci, aes(x = x, ymin = lower, ymax = upper), inherit.aes = F, width = 0.2) + 
+  geom_errorbar(data = post.ci, aes(x = mortality, ymin = low, ymax = high), inherit.aes = F, width = 0.2) + 
   coord_flip()
+
 
 groblist <- list(ggplotGrob(ages), ggplotGrob(counts))
 
@@ -184,3 +375,4 @@ grid.arrange(grobs = groblist,
                                              1,1,1,2,2),
                                     nrow = 10, ncol = 5, byrow = TRUE))
 dev.off()
+

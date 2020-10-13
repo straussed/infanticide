@@ -35,20 +35,30 @@ known.mortality$y <- as.matrix(known.mortality[,c('infanticide', 'starvation', '
 
 known.mortality.mom.alive <- filter(known.mortality, mom_disappeared == FALSE)
 
-# known.mortality$siblicide <- as.numeric(known.mortality$mortality == 'siblicide')
-# known.mortality$illness <- as.numeric(known.mortality$mortality == 'illness')
-# known.mortality$flooded.den <- as.numeric(known.mortality$mortality == 'flooded den')
-# known.mortality$y <- as.matrix(known.mortality[,c('infanticide', 'starvation', 'lion',
-#                                               'human','siblicide', 'illness', 'flooded.den')])
 
 
+### Descriptives
+
+## Total juvenile mortality
+nrow(unknown.mortality) + nrow(um.death.of.mother) + nrow(known.mortality)
+nrow(all.mortality)
+
+## Number of infanticide cases
+table(known.mortality$mortality)
+
+## Number of mortality sources recoded as 'death of mother'
+table(filter(all.mortality, mom_disappeared == TRUE)$mortality)
 
 ### Build model
 
 ## Priors
+priors <- get_prior(data = known.mortality.mom.alive, formula = bf(y| trials(1) ~ 1 + age_at_death), family = multinomial())
+priors$prior[grepl('student_t', priors$prior)] <- 'normal(0, 3)'
 
 ## Model
-fit <- brm(data = known.mortality.mom.alive, formula = bf(y| trials(1) ~ 1 + poly(age_at_death, 2)), family = multinomial())
+fit <- brm(data = known.mortality.mom.alive, formula = bf(y| trials(1) ~ 1 + age_at_death + age_at_death^2), family = multinomial(), 
+           prior = priors, sample_prior = TRUE, chains = 3, iter = 2000, warmup = 1000)
+save(fit, file = 'model.RData')
 
 
 ## Model diagnostics
@@ -115,6 +125,12 @@ age.by.mortality$mortality <- factor(age.by.mortality$mortality,
                                                  'siblicide', 'starvation', 'lion','infanticide', 'death of mother',
                                                  'unknown'),
                                      labels = levs.ss)
+
+
+## CI around infanticide freqeuncy
+post.ci["infanticide",2]/nrow(all.mortality)
+post.ci["infanticide",3]/nrow(all.mortality)
+sum(summarized.mortality[summarized.mortality$mortality == 'infanticide',]$frequency)/nrow(all.mortality)
 
 
 
@@ -347,7 +363,7 @@ counts <- ggplot(data=summarized.mortality,aes(x=mortality, y = frequency, width
   ylab("Count")+
   scale_fill_manual(values = c('gray85', 'grey30'))+
   scale_color_manual(values = c('gray85', 'grey30'))+
-  theme(legend.position = c(0.5,0.94),
+  theme(legend.position = c(0.7,0.95),
         legend.title = element_blank(),
         axis.text.y = element_blank(),
         axis.line.y = element_blank(),

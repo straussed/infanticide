@@ -1,12 +1,12 @@
 #################### Rank discrepency- Ally Brown 7 November, 2018 #####################
 ###Load libaries and set global functions
 rm(list = ls())
-library(tidyverse)
-library(survminer)
+library(dplyr)
 options(stringsAsFactors = FALSE)
-#setwd('L:\\CurrentGradStudents/StraussEli/Infanticide/Final_analysis/')
-setwd('/Volumes/Holekamp/CurrentGradStudents/StraussEli/Infanticide/Final_analysis/')
-load('01.tidied_data.RData')
+# #setwd('L:\\CurrentGradStudents/StraussEli/Infanticide/Final_analysis/')
+# setwd('/Volumes/Holekamp/CurrentGradStudents/StraussEli/Infanticide/Final_analysis/')
+#load('01.tidied_data.RData')
+load(file = here('Data/cub_data.RData'))
   
 ### add year to the date
 tblFemaleRanks$year <- as.numeric(tblFemaleRanks$year)
@@ -60,11 +60,12 @@ png(file = 'Plots/Killer_rank.png',width = 3.5, height = 3.5,
     units = 'in', res = 400)
 ggplot(mom.killer.rank, aes(x = whose, y= rank))+
   geom_boxplot(color = 'grey30', size= 1, fill = 'grey85')+
-  theme_survminer()+
+  theme_classic(base_size = 14)+
   xlab("")+
   ylab("Standardized Rank\n(Low)                                 (High)")+
   scale_x_discrete()
 dev.off()
 
-t.test(infanticide_notes$Mom_rank, infanticide_notes$Killer_rank)
+t.test(infanticide_notes$Mom_rank[!is.na(infanticide_notes$Mom_rank)], 
+       infanticide_notes$Killer_rank[!is.na(infanticide_notes$Killer_rank)])
 

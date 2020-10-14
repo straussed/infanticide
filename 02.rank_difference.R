@@ -2,13 +2,16 @@
 ###Load libaries and set global functions
 rm(list = ls())
 library(dplyr)
+library(here)
 options(stringsAsFactors = FALSE)
-# #setwd('L:\\CurrentGradStudents/StraussEli/Infanticide/Final_analysis/')
-# setwd('/Volumes/Holekamp/CurrentGradStudents/StraussEli/Infanticide/Final_analysis/')
-#load('01.tidied_data.RData')
+
 load(file = here('Data/cub_data.RData'))
+################################################################################
   
-### add year to the date
+### Examine ranks of killers and victims. Use table of qualitative data on
+#   infanticide events
+
+### add year to infanticide data
 tblFemaleRanks$year <- as.numeric(tblFemaleRanks$year)
 tblFemaleRanks$stan_rank <- as.numeric(tblFemaleRanks$stan_rank)
 infanticide_notes$Mom_rank <- NA
@@ -43,6 +46,14 @@ for(i in 1:nrow(infanticide_notes)){
 }
 
 
+### Check rank notes
+table(infanticide_notes$rank_notes)
+
+### Statistical test comparing ranks of killers and mothers
+t.test(infanticide_notes$Mom_rank[!is.na(infanticide_notes$Mom_rank)], 
+       infanticide_notes$Killer_rank[!is.na(infanticide_notes$Killer_rank)])
+
+### Prep data for plotting
 mom.killer.rank <- rbind(data.frame(whose = rep('mom'), 
                                     rank = infanticide_notes$Mom_rank),
                          data.frame(whose = rep('killer'),
@@ -55,7 +66,8 @@ labs = paste0(labs, '\n(n = ', table(na.omit(mom.killer.rank)$whose), ')')
 mom.killer.rank$whose <-factor(mom.killer.rank$whose, levels = c('killer', 'mom'),
                                labels = labs)
 
-
+################################################################################
+### Plotting
 png(file = 'Plots/Killer_rank.png',width = 3.5, height = 3.5,
     units = 'in', res = 400)
 ggplot(mom.killer.rank, aes(x = whose, y= rank))+
@@ -65,7 +77,3 @@ ggplot(mom.killer.rank, aes(x = whose, y= rank))+
   ylab("Standardized Rank\n(Low)                                 (High)")+
   scale_x_discrete()
 dev.off()
-
-t.test(infanticide_notes$Mom_rank[!is.na(infanticide_notes$Mom_rank)], 
-       infanticide_notes$Killer_rank[!is.na(infanticide_notes$Killer_rank)])
-

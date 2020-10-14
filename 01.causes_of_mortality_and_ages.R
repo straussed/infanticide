@@ -6,28 +6,36 @@ library(grid)
 library(ggridges)
 library(ggplot2)
 library(gridExtra)
+library(coda)
 
+set.seed(1989)
+options(stringsAsFactors = FALSE)
+################################################################################
+### Load data for analysis
 load(file = here('Data/cub_data.RData'))
 
+##### Split into mortality with known and unknown sources
 known.mortality <- filter(all.mortality, mortality != 'unknown')
 unknown.mortality <- filter(all.mortality, mortality == 'unknown')
 
-## Assign mortality to be mom death
+## For estimating frequency of different types of mortality, divide mortality
+## based on whether mother preceded offspring in death. Assign 'death of mother' 
+## to be it's own type of mortality, even superseding other causes. 
+
 known.mortality[is.na(known.mortality$mom_disappeared),'mom_disappeared'] <- FALSE
 known.mortality[known.mortality$mom_disappeared,]$mortality <- 'death of mother'
+
+## unknown mortality when mother precedes offspring in death
 um.death.of.mother <- filter(unknown.mortality, mom_disappeared == TRUE)
 um.death.of.mother$mortality <- 'death of mother'
 unknown.mortality <- filter(unknown.mortality, mom_disappeared == FALSE)
-#known.mortality <- rbind(known.mortality, um.death.of.mother)
 
 known.mortality$infanticide <- as.numeric(known.mortality$mortality == 'infanticide')
 known.mortality$starvation <- as.numeric(known.mortality$mortality == 'starvation')
 known.mortality$lion <- as.numeric(known.mortality$mortality == 'lion')
 known.mortality$human <- as.numeric(known.mortality$mortality == 'human')
 known.mortality$siblicide <- as.numeric(known.mortality$mortality == 'siblicide')
-## Combine illness and flooded den
-known.mortality$other <- as.numeric(known.mortality$mortality %in% c('illness', 'flooded den'))
-known.mortality[known.mortality$mortality %in% c('illness', 'flooded den'),'mortality'] <- 'other'
+known.mortality$other <- as.numeric(known.mortality$mortality == 'other')
 
 known.mortality$y <- as.matrix(known.mortality[,c('infanticide', 'starvation', 'lion', 'siblicide',
                                                   'human','other')])
@@ -36,7 +44,7 @@ known.mortality$y <- as.matrix(known.mortality[,c('infanticide', 'starvation', '
 known.mortality.mom.alive <- filter(known.mortality, mom_disappeared == FALSE)
 
 
-
+################################################################################
 ### Descriptives
 
 ## Total juvenile mortality
@@ -49,25 +57,62 @@ table(known.mortality$mortality)
 ## Number of mortality sources recoded as 'death of mother'
 table(filter(all.mortality, mom_disappeared == TRUE)$mortality)
 
-### Build model
+################################################################################
+### Modeling
 
 ## Priors
-priors <- get_prior(data = known.mortality.mom.alive, formula = bf(y| trials(1) ~ 1 + age_at_death), family = multinomial())
-priors$prior[grepl('student_t', priors$prior)] <- 'normal(0, 3)'
+priors <- get_prior(data = known.mortality.mom.alive, formula = bf(y| trials(1) ~ 0 + age_at_death), family = multinomial())
+#priors$prior[grepl('student_t', priors$prior)] <- 'normal(0, 3)'
+priors <- c(set_prior('normal(0,3)', class = 'b'), set_prior('normal(0,3)', class = 'Intercept'))
 
 ## Model
-fit <- brm(data = known.mortality.mom.alive, formula = bf(y| trials(1) ~ 1 + age_at_death + age_at_death^2), family = multinomial(), 
-           prior = priors, sample_prior = TRUE, chains = 3, iter = 2000, warmup = 1000)
+fit <- brm(data = known.mortality.mom.alive, formula = bf(y|trials(1) ~ 1 + age_at_death), family = multinomial(), 
+           prior = priors, chains = 3, iter = 10000, warmup = 5000, seed = 1989, cores = 3)
 save(fit, file = 'model.RData')
 
 
-## Model diagnostics
+## Model checking
+
+## For use with coda package
+coda.model <- brms::as.mcmc(fit)
+
+## Check for adequate convergence
+gelman.diag(coda.model) ## Equals 1
+gelman.plot(coda.model)
+plot(fit) ## Traceplots indicate convergence
+geweke.diag(coda.model) ## All less than |1.96|
+geweke.plot(coda.model)
+heidel.diag(coda.model) ## All passed
+
+autocorr.plot(coda.model)
+
+# Priors
+prior_summary(fit)
 
 
+# ### Check convergence and bias with double iterations
+# fit.dbl <- brm(data = known.mortality.mom.alive, formula = bf(y| trials(1) ~ 1 + age_at_death), family = multinomial(), 
+#            prior = priors, sample_prior = FALSE, chains = 3, iter = 20000, warmup = 10000, seed = 1989, cores = 3)
+# coda.model.dbl <- as.mcmc(fit.dbl)
+# 
+# plot(fit.dbl)
+# 
+# gelman.diag(coda.model.dbl) # All < 1.1
+# heidel.diag(coda.model.dbl) # All passed
+# 
+# round(100*((summary(fit.dbl)$fixed - summary(fit)$fixed) / summary(fit)$fixed), 3)[,"Estimate"] ## No indication of bias
 
+## Histograms look good? 
+mcmc_plot(fit, pars = 'age_at_death', type = 'hist')
+
+################################################################################
 ### Predictions
+
+### Predict mortality source for each individual with unknown mortality source
 pred.fit <- posterior_predict(fit, newdata = unknown.mortality, nsamples = 200)
 
+## Take mean of predictions to get mean and CI for number of inferred mortality
+#  events for each mortality source
 posterior.means <- apply(pred.fit, 3, function(x)(sum(x/200)))
 probs <- apply(pred.fit, c(2,3), function(x)(sum(x/200)))
 posterior.draws <- apply(pred.fit, c(1,3), sum)
@@ -80,8 +125,8 @@ names(post.ci) <- c('mortality', 'high', 'low')
                       
 
 
-
-
+## Sample posterior for predictions of probability of different mortality
+#  sources based on age at death. 
 smooth.pred <- posterior_epred(fit, newdata = data.frame(age_at_death = seq(from = 0, to = 12, by = 0.5)),
                                nsamples = 200)
 smooth.probs <- data.frame(apply(smooth.pred, c(2,3), mean))
@@ -92,7 +137,7 @@ smooth.probs.low <- data.frame(apply(smooth.pred, c(2,3), quantile, 0.05))
 smooth.probs.low$age <- seq(from = 0, to = 12, by = 0.5)
 
 
-
+################################################################################
 ### Prepare data for plotting
 summarized.mortality <- data.frame(mortality = names(table(known.mortality$mortality)),
                                    frequency = as.numeric(table(known.mortality$mortality)),
@@ -133,22 +178,8 @@ post.ci["infanticide",3]/nrow(all.mortality)
 sum(summarized.mortality[summarized.mortality$mortality == 'infanticide',]$frequency)/nrow(all.mortality)
 
 
-
-#### Plotting 
-ggplot(data = smooth.probs, aes(x = age, y = infanticide))+
-  geom_density(data= filter(known.mortality, mortality == 'infanticide'), aes(x = age_at_death), inherit.aes = FALSE)+
-  geom_line(color = 'red', size= 1)+
-  geom_line(data = smooth.probs.high, lty = 2, color = 'red')+
-  geom_line(data = smooth.probs.low, lty = 2, color = 'red')+
-  theme_classic(base_size = 14)+
-  ylim(c(0,1))+
-  xlab('Age (months)')+
-  theme()
-
-
-dev.off()
-
-
+### Plotting
+################################################################################
 png('Plots/prob_mortality_source.png', width = 7, height = 5,
     res = 400, units = 'in')
 par(mfrow = c(2,3),
@@ -213,8 +244,6 @@ lines(x = smooth.probs.low$age,
       lty = 2,
       lwd = 1,
       ylim = c(0,1))
-
-
 
 ## Starvation 
 plot(x = smooth.probs$age, 
@@ -391,4 +420,4 @@ grid.arrange(grobs = groblist,
                                              1,1,1,2,2),
                                     nrow = 10, ncol = 5, byrow = TRUE))
 dev.off()
-
+################################################################################

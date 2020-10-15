@@ -172,10 +172,14 @@ age.by.mortality$mortality <- factor(age.by.mortality$mortality,
                                      labels = levs.ss)
 
 
-## CI around infanticide freqeuncy
+## CI around infanticide and lion freqeuncy
 post.ci["infanticide",2]/nrow(all.mortality)
 post.ci["infanticide",3]/nrow(all.mortality)
 sum(summarized.mortality[summarized.mortality$mortality == 'infanticide',]$frequency)/nrow(all.mortality)
+
+post.ci["lion",2]/nrow(all.mortality)
+post.ci["lion",3]/nrow(all.mortality)
+sum(summarized.mortality[summarized.mortality$mortality == 'lion',]$frequency)/nrow(all.mortality)
 
 
 ### Plotting

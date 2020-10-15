@@ -16,9 +16,9 @@ tblFemaleRanks$year <- as.numeric(tblFemaleRanks$year)
 tblFemaleRanks$stan_rank <- as.numeric(tblFemaleRanks$stan_rank)
 infanticide_notes$Mom_rank <- NA
 infanticide_notes$Killer_rank <- NA
-infanticide_notes$rank_notes <- ''
 
-###for latest years where no rank info available, use rank from most recent year and make a note
+
+### Add killer and mother ranks
 for(i in 1:nrow(infanticide_notes)){
   mom <- infanticide_notes$Mom[i]
   killer <- infanticide_notes$Killers[i]
@@ -27,27 +27,15 @@ for(i in 1:nrow(infanticide_notes)){
   if(mom %in% filter(tblFemaleRanks, year == infanticide_notes[i,'Year'])$id){
     infanticide_notes$Mom_rank[i] <- filter(tblFemaleRanks, year == infanticide_notes[i,'Year'],
                                             id == mom)$stan_rank
-  }else if(mom %in% tblFemaleRanks$id){
-    infanticide_notes$Mom_rank[i] <- tblFemaleRanks[tblFemaleRanks$id == mom,'stan_rank'][which.max(tblFemaleRanks[tblFemaleRanks$id == mom,'year'])]
-    infanticide_notes$rank_notes[i] <- paste0(infanticide_notes$rank_notes[i], ';', 
-                                              'mom rank used from ', tblFemaleRanks[tblFemaleRanks$id == mom,'year'][which.max(tblFemaleRanks[tblFemaleRanks$id == mom,'year'])])
   }
   
   ##killer rank
   if(killer %in% filter(tblFemaleRanks, year == infanticide_notes[i,'Year'])$id){
     infanticide_notes$Killer_rank[i] <- filter(tblFemaleRanks, year == infanticide_notes[i,'Year'],
-                                            id == killer)$stan_rank
-  }else if(killer %in% tblFemaleRanks$id){
-    infanticide_notes$Killer_rank[i] <- tblFemaleRanks[tblFemaleRanks$id == killer,'stan_rank'][which.max(tblFemaleRanks[tblFemaleRanks$id == killer,'year'])]
-    infanticide_notes$rank_notes[i] <- paste0(infanticide_notes$rank_notes[i], ';', 
-                                              'killer rank used from ', tblFemaleRanks[tblFemaleRanks$id == killer,'year'][which.max(tblFemaleRanks[tblFemaleRanks$id == killer,'year'])])
+                                               id == killer)$stan_rank
   }
   
 }
-
-
-### Check rank notes
-table(infanticide_notes$rank_notes)
 
 ### Statistical test comparing ranks of killers and mothers
 t.test(infanticide_notes$Mom_rank[!is.na(infanticide_notes$Mom_rank)], 

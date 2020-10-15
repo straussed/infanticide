@@ -54,6 +54,9 @@ nrow(all.mortality)
 ## Number of infanticide cases
 table(known.mortality$mortality)
 
+## representations of different clans
+table(all.mortality$clan)
+
 ## Number of mortality sources recoded as 'death of mother'
 table(filter(all.mortality, mom_disappeared == TRUE)$mortality)
 
@@ -67,7 +70,7 @@ priors <- c(set_prior('normal(0,3)', class = 'b'), set_prior('normal(0,3)', clas
 
 ## Model
 fit <- brm(data = known.mortality.mom.alive, formula = bf(y|trials(1) ~ 1 + age_at_death), family = multinomial(), 
-           prior = priors, chains = 3, iter = 10000, warmup = 5000, seed = 1989, cores = 3)
+           prior = priors, chains = 3, iter = 15000, warmup = 7500, seed = 1989, cores = 3)
 save(fit, file = 'model.RData')
 
 
@@ -78,13 +81,13 @@ coda.model <- brms::as.mcmc(fit)
 
 ## Check for adequate convergence
 gelman.diag(coda.model) ## Equals 1
-gelman.plot(coda.model)
+#gelman.plot(coda.model)
 plot(fit) ## Traceplots indicate convergence
 geweke.diag(coda.model) ## All less than |1.96|
-geweke.plot(coda.model)
+#geweke.plot(coda.model)
 heidel.diag(coda.model) ## All passed
 
-autocorr.plot(coda.model)
+#autocorr.plot(coda.model)
 
 # Priors
 prior_summary(fit)
@@ -103,7 +106,7 @@ prior_summary(fit)
 # round(100*((summary(fit.dbl)$fixed - summary(fit)$fixed) / summary(fit)$fixed), 3)[,"Estimate"] ## No indication of bias
 
 ## Histograms look good? 
-mcmc_plot(fit, pars = 'age_at_death', type = 'hist')
+#mcmc_plot(fit, pars = 'age_at_death', type = 'hist')
 
 ################################################################################
 ### Predictions

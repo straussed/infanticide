@@ -42,7 +42,7 @@ known.mortality$y <- as.matrix(known.mortality[,c('infanticide', 'starvation', '
 
 
 known.mortality.mom.alive <- filter(known.mortality, mom_disappeared == FALSE)
-
+nrow(known.mortality.mom.alive)
 
 ################################################################################
 ### Descriptives
@@ -53,6 +53,9 @@ nrow(all.mortality)
 
 ## Number of infanticide cases
 table(known.mortality$mortality)
+
+## Proportion of known mortality due to different cuases
+table(known.mortality$mortality)/nrow(known.mortality)
 
 ## representations of different clans
 table(all.mortality$clan)
@@ -130,14 +133,14 @@ names(post.ci) <- c('mortality', 'high', 'low')
 
 ## Sample posterior for predictions of probability of different mortality
 #  sources based on age at death. 
-smooth.pred <- posterior_epred(fit, newdata = data.frame(age_at_death = seq(from = 0, to = 12, by = 0.5)),
+smooth.pred <- posterior_epred(fit, newdata = data.frame(age_at_death = seq(from = 0, to = 12, by = 0.1)),
                                nsamples = 200)
 smooth.probs <- data.frame(apply(smooth.pred, c(2,3), mean))
-smooth.probs$age <- seq(from = 0, to = 12, by = 0.5)
+smooth.probs$age <- seq(from = 0, to = 12, by = 0.1)
 smooth.probs.high <- data.frame(apply(smooth.pred, c(2,3), quantile, 0.95))
-smooth.probs.high$age <- seq(from = 0, to = 12, by = 0.5)
+smooth.probs.high$age <- seq(from = 0, to = 12, by = 0.1)
 smooth.probs.low <- data.frame(apply(smooth.pred, c(2,3), quantile, 0.05))
-smooth.probs.low$age <- seq(from = 0, to = 12, by = 0.5)
+smooth.probs.low$age <- seq(from = 0, to = 12, by = 0.1)
 
 
 ################################################################################

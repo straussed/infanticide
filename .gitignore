@@ -3,3 +3,6 @@
 00.select_cubs.R
 .Rhistory
 .RData
+.DS_Store
+Data/.DS_Store
+infanticide.Rproj

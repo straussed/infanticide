@@ -54,7 +54,7 @@ nrow(all.mortality)
 ## Number of infanticide cases
 table(known.mortality$mortality)
 
-## Proportion of known mortality due to different cuases
+## Proportion of known mortality due to different causes
 table(known.mortality$mortality)/nrow(known.mortality)
 
 ## representations of different clans

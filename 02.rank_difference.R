@@ -1,4 +1,4 @@
-#################### Rank discrepency- Ally Brown 7 November, 2018 #####################
+#################### Rank discrepancy- Ally Brown 7 November, 2018 #####################
 ###Load libaries and set global functions
 rm(list = ls())
 library(dplyr)

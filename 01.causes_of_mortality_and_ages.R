@@ -44,6 +44,8 @@ known.mortality$y <- as.matrix(known.mortality[,c('infanticide', 'starvation', '
 known.mortality.mom.alive <- filter(known.mortality, mom_disappeared == FALSE)
 nrow(known.mortality.mom.alive)
 
+save(known.mortality, file = 'Data/known_mortality_cleaned.RData')
+
 ################################################################################
 ### Descriptives
 

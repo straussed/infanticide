@@ -49,11 +49,20 @@ save(known.mortality, file = 'Data/known_mortality_cleaned.RData')
 ################################################################################
 ### Descriptives
 
+## Total births
+nrow(all.mortality) + num.survivors
+
 ## Total juvenile mortality
 nrow(unknown.mortality) + nrow(um.death.of.mother) + nrow(known.mortality)
 nrow(all.mortality)
 
-## Number of infanticide cases
+## Proportion of juveniles suffering mortality
+nrow(all.mortality)/(nrow(all.mortality)+num.survivors)
+
+## Proportion of mortality known
+nrow(known.mortality)/nrow(all.mortality)
+
+## Raw counts of known mortality sources after death of mother recoding
 table(known.mortality$mortality)
 
 ## Proportion of known mortality due to different causes
@@ -64,6 +73,10 @@ table(all.mortality$clan)
 
 ## Number of mortality sources recoded as 'death of mother'
 table(filter(all.mortality, mom_disappeared == TRUE)$mortality)
+
+## Proportion of cubs dying due to orphaning?
+sum(table(filter(all.mortality, mom_disappeared == TRUE)$mortality))/nrow(all.mortality)
+
 
 ################################################################################
 ### Modeling
@@ -112,6 +125,13 @@ smooth.probs.high$age <- seq(from = 0, to = 12, by = 0.1)
 smooth.probs.low <- data.frame(apply(smooth.pred, c(2,3), quantile, 0.05))
 smooth.probs.low$age <- seq(from = 0, to = 12, by = 0.1)
 
+most.likely.death.by.age <- data.frame(age = smooth.probs$age, most.likely.death = NA)
+
+for(i in 1:nrow(smooth.probs)){
+  most.likely.death.by.age[i,]$most.likely.death <- names(smooth.probs[,1:6])[which.max(smooth.probs[i,1:6])]
+}
+most.likely.death.by.age
+
 
 ################################################################################
 ### Prepare data for plotting
@@ -157,6 +177,11 @@ sum(summarized.mortality[summarized.mortality$mortality == 'infanticide',]$frequ
 post.ci["lion",2]/nrow(all.mortality)
 post.ci["lion",3]/nrow(all.mortality)
 sum(summarized.mortality[summarized.mortality$mortality == 'lion',]$frequency)/nrow(all.mortality)
+
+## Proportion of all cubs born dying due to infanticide
+post.ci["infanticide",2]/(nrow(all.mortality)+num.survivors)
+post.ci["infanticide",3]/(nrow(all.mortality)+num.survivors)
+sum(summarized.mortality[summarized.mortality$mortality == 'infanticide',]$frequency)/(nrow(all.mortality)+num.survivors)
 
 
 ### Plotting

@@ -5,7 +5,6 @@ output: word_document
 
 ```{r setup, include=FALSE, echo = FALSE}
 
-library(coda)
 library(brms)
 load('Data/age_model.RData')
 load('Data/prey_and_cub_models.RData')
@@ -18,7 +17,7 @@ Here we used a multinomial model of mortality source as a function of age at dea
 to understand the contribution of different mortality sources to overall mortality. 
 This model was initialized with weak, uninformative priors, and three chains were run for 15000 iterations each (7500 warmup). 
 
-#### Model summary
+#### Model summary and diagnostic
 
 ```{r age at death model - summary}
 
@@ -26,23 +25,51 @@ This model was initialized with weak, uninformative priors, and three chains wer
 prior_summary(fit)
 
 summary(fit)
-```
-## Model diagnostics
 
-Traceplots indicate convergence, and all R-hat values are equal to 1. Geweke's 
-diagnostic indicates that the chains achieved stability. The MCMC chains showed minimal autocorrelation. 
-
-```{r age at death model - traceplots}
-## Model checking
-## For use with coda package
-coda.model <- brms::as.mcmc(fit)
-
-## Check for adequate convergence
-gelman.diag(coda.model) ## Equals 1
 par(mfrow = c(3, 3))
-plot(fit) ## Traceplots indicate convergence
-geweke.diag(coda.model) ## All less extreme than 1.96
-heidel.diag(coda.model)
-autocorr.plot(coda.model) ## Autocorrelation looks fine
+mcmc_plot(fit, type = 'trace') ## Traceplots indicate convergence
+
+rhat(fit)
 ```
+## Model detail and diagnostic for prey density ~ mortality + (1|clan) 
+
+Here we built a mixed model of prey density in the month before death as a function of mortality source, including a random effect of clan.
+This model was initialized with weak, uninformative priors, and four chains were run for 2000 iterations each (1000 warmup). 
+
+#### Model summary and diagnostic
+
+```{r prey model - summary}
+
+# Priors
+prior_summary(prey_mod)
+
+summary(prey_mod)
+
+par(mfrow = c(3, 3))
+mcmc_plot(prey_mod, type = 'trace') ## Traceplots indicate convergence
+
+rhat(prey_mod)
+```
+
+## Model detail and diagnostic for cub density ~ mortality + (1|clan) 
+
+Here we built a mixed model of prey density in the month before death as a function of mortality source, including a random effect of clan.
+This model was initialized with weak, uninformative priors, and four chains were run for 2000 iterations each (1000 warmup). 
+
+#### Model summary and diagnostic
+
+```{r cub density model - summary}
+
+# Priors
+prior_summary(cub_density_mod)
+
+summary(cub_density_mod)
+
+par(mfrow = c(3, 3))
+mcmc_plot(cub_density_mod, type = 'trace') ## Traceplots indicate convergence
+
+rhat(cub_density_mod)
+```
+
+
 

@@ -14,14 +14,16 @@ load(file = here('Data/cub_data.RData'))
 load(file = here('Data/known_mortality_cleaned.RData'))
 
 
+hypothesis.test.dataset <- filter(known.mortality, clan %in% tblFemaleRanks$clan)
+
 ### Set infanticide as intercept for modeling
-known.mortality$mortality.model <- factor(known.mortality$mortality, levels = c('infanticide', 'lion', 'other', 'siblicide', 'death of mother', 'starvation', 'human'))
+hypothesis.test.dataset$mortality.model <- factor(hypothesis.test.dataset$mortality, levels = c('infanticide', 'lion', 'other', 'siblicide', 'death of mother', 'starvation', 'human'))
 
 ################################################################################
 ### Does prey density vary by mortality source?
-prey_mod <- brm(data = known.mortality[!is.na(known.mortality$prey_density),], prey_density ~ 1 + mortality.model + (1|clan),
+prey_mod <- brm(data = hypothesis.test.dataset[!is.na(hypothesis.test.dataset$prey_density),], prey_density ~ 1 + mortality.model + (1|clan),
                 control = list(adapt_delta = 0.99), save_all_pars = TRUE)
-prey_null_mod <- brm(data = known.mortality[!is.na(known.mortality$prey_density),], prey_density ~ 1 + (1|clan), 
+prey_null_mod <- brm(data = hypothesis.test.dataset[!is.na(hypothesis.test.dataset$prey_density),], prey_density ~ 1 + (1|clan), 
                      control = list(adapt_delta = 0.99), save_all_pars = TRUE)
 
 ## Model comparison
@@ -29,9 +31,9 @@ loo(prey_mod, prey_null_mod, moment_match = TRUE)
 
 ################################################################################
 ### Does the number of cubs vary by mortality source?
-cub_density_mod <- brm(data = known.mortality[!is.na(known.mortality$cub_associates),], cub_associates ~ 1 + mortality + (1|clan),
+cub_density_mod <- brm(data = hypothesis.test.dataset[!is.na(hypothesis.test.dataset$cub_associates),], cub_associates ~ 1 + mortality.model + (1|clan),
                        control = list(adapt_delta = 0.99))
-cub_null_mod <- brm(data = known.mortality[!is.na(known.mortality$cub_associates),], cub_associates ~ 1 + (1|clan),
+cub_null_mod <- brm(data = hypothesis.test.dataset[!is.na(hypothesis.test.dataset$cub_associates),], cub_associates ~ 1 + (1|clan),
                 control = list(adapt_delta = 0.99))
 
 ## Model comparison
@@ -103,10 +105,10 @@ dev.off()
 
 #### Plotting
 
-known.mortality$mortality.plot <- factor(known.mortality$mortality, levels = c('death of mother', 'infanticide', 'lion', 'starvation', 'siblicide', 'human', 'other'),
+hypothesis.test.dataset$mortality.plot <- factor(hypothesis.test.dataset$mortality, levels = c('death of mother', 'infanticide', 'lion', 'starvation', 'siblicide', 'human', 'other'),
                                          labels = c('death of\nmother', 'infanticide', 'lion', 'starvation', 'siblicide', 'human', 'other'))
 
-prey <- ggplot(data = known.mortality, aes(x = mortality.plot, y = prey_density))+
+prey <- ggplot(data = hypothesis.test.dataset, aes(x = mortality.plot, y = prey_density))+
   geom_boxplot(outlier.color = NA, color = 'grey30', size= 1, fill = 'grey85')+
   labs(tags = 'a) ')+
   theme_classic(base_size = 14) +
@@ -115,7 +117,7 @@ prey <- ggplot(data = known.mortality, aes(x = mortality.plot, y = prey_density)
   xlab('')
 
 
-cubs <- ggplot(data = known.mortality, aes(x = mortality.plot, y = cub_associates))+
+cubs <- ggplot(data = hypothesis.test.dataset, aes(x = mortality.plot, y = cub_associates))+
   geom_boxplot(outlier.color = NA, color = 'grey30', size= 1, fill = 'grey85')+
   labs(tags = 'b) ')+
   theme_classic(base_size = 14)+

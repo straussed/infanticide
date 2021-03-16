@@ -1,5 +1,5 @@
 ---
-title: "Supplemental Material for Infanticide" 
+title: "Supplemental Material for Brown et al." 
 output: word_document
 ---
 
@@ -10,6 +10,12 @@ load('Data/age_model.RData')
 load('Data/prey_and_cub_models.RData')
 
 ```
+
+## Photos of mother caring for deceased offspring
+
+In this observation
+
+![](Plots/fuzz_event_cropped.png)
 
 ## Model detail and diagnostic for moratlity ~ age at death 
 

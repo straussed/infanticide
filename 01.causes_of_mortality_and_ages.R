@@ -6,12 +6,12 @@ library(grid)
 library(ggridges)
 library(ggplot2)
 library(gridExtra)
-library(coda)
 
 set.seed(1989)
 options(stringsAsFactors = FALSE)
 ################################################################################
 ### Load data for analysis
+rm(list = ls())
 load(file = here('Data/cub_data.RData'))
 
 ##### Split into mortality with known and unknown sources
@@ -75,43 +75,11 @@ priors <- c(set_prior('normal(0,3)', class = 'b'), set_prior('normal(0,3)', clas
 
 ## Model
 fit <- brm(data = known.mortality.mom.alive, formula = bf(y|trials(1) ~ 1 + age_at_death), family = multinomial(), 
-           prior = priors, chains = 3, iter = 15000, warmup = 7500, seed = 1989, cores = 3)
-save(fit, file = 'model.RData')
+           prior = priors, chains = 3, iter = 30000, warmup = 15000, seed = 1989, cores = 3, inits = 0)
+save(fit, file = 'Data/age_model.RData')
 
 
-## Model checking
 
-## For use with coda package
-coda.model <- brms::as.mcmc(fit)
-
-## Check for adequate convergence
-gelman.diag(coda.model) ## Equals 1
-#gelman.plot(coda.model)
-plot(fit) ## Traceplots indicate convergence
-geweke.diag(coda.model) ## All less than |1.96|
-#geweke.plot(coda.model)
-heidel.diag(coda.model) ## All passed
-
-#autocorr.plot(coda.model)
-
-# Priors
-prior_summary(fit)
-
-
-# ### Check convergence and bias with double iterations
-# fit.dbl <- brm(data = known.mortality.mom.alive, formula = bf(y| trials(1) ~ 1 + age_at_death), family = multinomial(), 
-#            prior = priors, sample_prior = FALSE, chains = 3, iter = 20000, warmup = 10000, seed = 1989, cores = 3)
-# coda.model.dbl <- as.mcmc(fit.dbl)
-# 
-# plot(fit.dbl)
-# 
-# gelman.diag(coda.model.dbl) # All < 1.1
-# heidel.diag(coda.model.dbl) # All passed
-# 
-# round(100*((summary(fit.dbl)$fixed - summary(fit)$fixed) / summary(fit)$fixed), 3)[,"Estimate"] ## No indication of bias
-
-## Histograms look good? 
-#mcmc_plot(fit, pars = 'age_at_death', type = 'hist')
 
 ################################################################################
 ### Predictions
@@ -162,7 +130,8 @@ summarized.mortality <- rbind(summarized.mortality,
                                          obs.inf = 'inferred'))
 
 age.by.mortality <- rbind(known.mortality[,c('mortality', 'age_at_death')],
-                          unknown.mortality[,c('mortality', 'age_at_death')])
+                          unknown.mortality[,c('mortality', 'age_at_death')],
+                          data.frame(mortality = 'unknown', age_at_death = um.death.of.mother$age_at_death))
 
 age.by.mortality$mortality <- factor(age.by.mortality$mortality, 
                                      levels = c( 'other', 'human',

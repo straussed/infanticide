@@ -81,17 +81,14 @@ sum(table(filter(all.mortality, mom_disappeared == TRUE)$mortality))/nrow(all.mo
 ################################################################################
 ### Modeling
 
-## Priors
-priors <- get_prior(data = known.mortality.mom.alive, formula = bf(y| trials(1) ~ 0 + age_at_death), family = multinomial())
-#priors$prior[grepl('student_t', priors$prior)] <- 'normal(0, 3)'
-priors <- c(set_prior('normal(0,3)', class = 'b'), set_prior('normal(0,3)', class = 'Intercept'))
-
 ## Model
 fit <- brm(data = known.mortality.mom.alive, formula = bf(y|trials(1) ~ 1 + age_at_death), family = multinomial(), 
-           prior = priors, chains = 3, iter = 30000, warmup = 15000, seed = 1989, cores = 3, inits = 0)
+           chains = 4, iter = 30000, warmup = 15000, seed = 1989, cores = 4, inits = 0)
 save(fit, file = 'Data/age_model.RData')
 
+null <- brm(data = known.mortality.mom.alive, formula = bf(y|trials(1) ~ 1), family = multinomial(), chains = 4, iter = 30000, warmup = 15000, seed = 1989, cores = 4, inits = 0)
 
+loo(fit, null)
 
 
 ################################################################################
@@ -102,8 +99,8 @@ pred.fit <- posterior_predict(fit, newdata = unknown.mortality, nsamples = 200)
 
 ## Take mean of predictions to get mean and CI for number of inferred mortality
 #  events for each mortality source
-posterior.means <- apply(pred.fit, 3, function(x)(sum(x/200)))
-probs <- apply(pred.fit, c(2,3), function(x)(sum(x/200)))
+posterior.means <- apply(pred.fit, 3, function(x)(sum(x)/200))
+probs <- apply(pred.fit, c(2,3), function(x)(sum(x)/200))
 posterior.draws <- apply(pred.fit, c(1,3), sum)
 posterior.cred.int <- apply(posterior.draws, 2, quantile, c(0.95, 0.05))
 

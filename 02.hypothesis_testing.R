@@ -18,23 +18,35 @@ hypothesis.test.dataset <- filter(known.mortality, clan %in% tblFemaleRanks$clan
 
 ### Set infanticide as intercept for modeling
 hypothesis.test.dataset$mortality.model <- factor(hypothesis.test.dataset$mortality, levels = c('infanticide', 'lion', 'other', 'siblicide', 'death of mother', 'starvation', 'human'))
+hypothesis.test.dataset$death_of_mother <- as.numeric(hypothesis.test.dataset$mortality == 'death of mother')
+
+prey.test.data <- hypothesis.test.dataset[!is.na(hypothesis.test.dataset$prey_density),]
+prey.test.data$y <- as.matrix(prey.test.data[,c('infanticide', 'starvation', 'lion', 'siblicide','death_of_mother',
+                                                  'human','other')])
+
+cub.density.test.data <- hypothesis.test.dataset[!is.na(hypothesis.test.dataset$cub_associates),]
+cub.density.test.data$y <- as.matrix(cub.density.test.data[,c('infanticide', 'starvation', 'lion', 'siblicide','death_of_mother',
+                                                'human','other')])
+
 
 ################################################################################
 ### Does prey density vary by mortality source?
-prey_mod <- brm(data = hypothesis.test.dataset[!is.na(hypothesis.test.dataset$prey_density),], prey_density ~ 1 + mortality.model + (1|clan),
-                control = list(adapt_delta = 0.99), save_all_pars = TRUE)
-prey_null_mod <- brm(data = hypothesis.test.dataset[!is.na(hypothesis.test.dataset$prey_density),], prey_density ~ 1 + (1|clan), 
-                     control = list(adapt_delta = 0.99), save_all_pars = TRUE)
+prey_mod <- brm(data = prey.test.data, bf(y|trials(1) ~ 1 + prey_density),
+                family = multinomial(), chains = 4, iter = 30000, warmup = 15000, cores = 4, seed= 1989, inits = 0)
+prey_null_mod <- brm(data = prey.test.data, bf(y|trials(1) ~ 1),
+                     family = multinomial(), chains = 4, iter = 30000, warmup = 15000, cores = 4, seed= 1989, inits = 0)
+
+
 
 ## Model comparison
-loo(prey_mod, prey_null_mod, moment_match = TRUE)
+loo(prey_mod, prey_null_mod)
 
 ################################################################################
 ### Does the number of cubs vary by mortality source?
-cub_density_mod <- brm(data = hypothesis.test.dataset[!is.na(hypothesis.test.dataset$cub_associates),], cub_associates ~ 1 + mortality.model + (1|clan),
-                       control = list(adapt_delta = 0.99))
-cub_null_mod <- brm(data = hypothesis.test.dataset[!is.na(hypothesis.test.dataset$cub_associates),], cub_associates ~ 1 + (1|clan),
-                control = list(adapt_delta = 0.99))
+cub_density_mod <- brm(data = cub.density.test.data, bf(y|trials(1) ~ 1 + cub_associates),
+                       family = multinomial(), chains = 4, iter = 30000, warmup = 15000, cores = 4, seed= 1989, inits = 0)
+cub_null_mod <- brm(data = cub.density.test.data, bf(y|trials(1) ~ 1),
+                    family = multinomial(), chains = 4, iter = 30000, warmup = 15000, cores = 4, seed= 1989, inits = 0)
 
 ## Model comparison
 loo(cub_density_mod, cub_null_mod)

@@ -1,27 +1,35 @@
 ---
 title: "Supplemental Material for Brown et al." 
-output: word_document
+author: Ally K Brown, Malit O Pioon, Kay E Holekamp, Eli D Strauss
+output: pdf_document
+template: AmNat_supp_template.tex
 ---
 
 ```{r setup, include=FALSE, echo = FALSE}
 
 library(brms)
+library(dplyr)
+library(bayesplot)
 load('Data/age_model.RData')
 load('Data/prey_and_cub_models.RData')
+load('Data/known_mortality_cleaned.RData')
+load('Data/cub_data.RData')
 
 ```
 
-## Photos of mother caring for deceased offspring
+\newpage
 
-In this observation
+## 1. Posthumous care by mother
 
 ![](Plots/fuzz_event_cropped.png)
 
-## Model detail and diagnostic for moratlity ~ age at death 
+Figure S1. A mother caring showing poshumous care by defending it from others, moving it in and out of the den, and grooming it. Note the atypical way she is carrying her cub in panel A; cubs are typically carried by the nape of the neck, as in other carnivores. When observers left her, she was sleeping next to the body of her deceased cub (panel E).
 
-Here we used a multinomial model of mortality source as a function of age at death to understand the contribution of different mortality sources to overall mortality. This model was initialized with weak, uninformative priors, and four chains were run for 30000 iterations each (15000 warmup). 
+&nbsp;
+&nbsp;
+## 2. Model detail and diagnostic for mortality \~ age at death
 
-#### Model summary and diagnostic
+Here we used a multinomial model of mortality source as a function of age at death to understand the contribution of different mortality sources to overall mortality. This model was initialized with weak, uninformative priors, and four chains were run for 30000 iterations each (15000 warmup).
 
 ```{r age at death model - summary}
 
@@ -30,14 +38,24 @@ prior_summary(fit)
 
 summary(fit)
 
-par(mfrow = c(3, 3))
-mcmc_plot(fit, type = 'trace') ## Traceplots indicate convergence
-
-rhat(fit)
 ```
-## Model detail and diagnostic for moratlity ~ prey density 
 
-Here we used a multinomial model of mortality source as a function of prey density. This model was initialized with weak, uninformative priors, and four chains were run for 30000 iterations each (15000 warmup). 
+&nbsp;
+&nbsp;
+
+```{r age at death interval plot, echo = FALSE}
+
+mcmc_intervals(fit, regex_pars = 'age', prob_outer = 0.95)
+```
+
+Figure S2. Interval plot showing parameter estimates and associated 50% and 95% credible intervals for the effect of age at death on the probability of different mortality sources. Infanticide is the reference level, so parameter estimates represent the log odds ratio of each mortality source relative to infanticide.
+
+&nbsp;
+&nbsp;
+
+## 3. Model detail and diagnostic for moratlity \~ prey density
+
+Here we used a multinomial model of mortality source as a function of prey density. This model was initialized with weak, uninformative priors, and four chains were run for 30000 iterations each (15000 warmup).
 
 #### Model summary and diagnostic
 
@@ -47,14 +65,33 @@ Here we used a multinomial model of mortality source as a function of prey densi
 prior_summary(prey_mod)
 
 summary(prey_mod)
-
-par(mfrow = c(3, 3))
-mcmc_plot(prey_mod, type = 'trace') ## Traceplots indicate convergence
-
-rhat(prey_mod)
 ```
 
+&nbsp;
+&nbsp;
+
+```{r prey density interval plot, echo = FALSE}
+
+mcmc_intervals(prey_mod, regex_pars = 'prey_density', prob_outer = 0.95)
+```
+
+Figure S3. Interval plot showing parameter estimates and associated 50% and 95% credible intervals for the effect of prey density on the probability of different mortality sources. Infanticide is the reference level, so parameter estimates represent the log odds ratio of each mortality source relative to infanticide.  
+  
+&nbsp;
+&nbsp;
+
 ```{r prey mode - plot, echo = FALSE}
+hypothesis.test.dataset <- filter(known.mortality, clan %in% tblFemaleRanks$clan)
+
+### Set infanticide as intercept for modeling
+hypothesis.test.dataset$mortality.model <- factor(hypothesis.test.dataset$mortality, levels = c('infanticide', 'lion', 'other', 'siblicide', 'death of mother', 'starvation', 'human'))
+hypothesis.test.dataset$death_of_mother <- as.numeric(hypothesis.test.dataset$mortality == 'death of mother')
+
+prey.test.data <- hypothesis.test.dataset[!is.na(hypothesis.test.dataset$prey_density),]
+prey.test.data$y <- as.matrix(prey.test.data[,c('infanticide', 'starvation', 'lion', 'siblicide','death_of_mother',
+                                                  'human','other')])
+
+
 ## Predicted effect of cub density on the probability of infanticide
 pred <- posterior_epred(prey_mod, newdata = data.frame(prey_density = seq(from = 0,
                                                                                    to = max(prey.test.data$prey_density), 
@@ -99,11 +136,14 @@ for(i in 1:7){
 
 ```
 
-## Model detail and diagnostic for mortality ~ cub density
+Figure S4. Predicted probability of mortality (with 95% prediction intervals) due to each source as a function of prey density.  
 
-Here we used a multinomial model of mortality source as a function of cub density. This model was initialized with weak, uninformative priors, and four chains were run for 30000 iterations each (15000 warmup). 
+&nbsp;
+&nbsp;
 
-#### Model summary and diagnostic
+## 4. Model detail and diagnostic for mortality \~ cub density
+
+Here we used a multinomial model of mortality source as a function of cub density. This model was initialized with weak, uninformative priors, and four chains were run for 30000 iterations each (15000 warmup).\
 
 ```{r cub density model - summary}
 
@@ -112,14 +152,29 @@ prior_summary(cub_density_mod)
 
 summary(cub_density_mod)
 
-par(mfrow = c(3, 3))
-mcmc_plot(cub_density_mod, type = 'trace') ## Traceplots indicate convergence
+```
+&nbsp;
+&nbsp;
 
-rhat(cub_density_mod)
+```{r cub density interval plot, echo = FALSE}
 
+mcmc_intervals(cub_density_mod, regex_pars = 'cub', prob_outer = 0.95)
 ```
 
+Figure S5. Interval plot showing parameter estimates and associated 50% and 95% credible intervals for the effect of cub density on the probability of different mortality sources. Infanticide is the reference level, so parameter estimates represent the log odds ratio of each mortality source relative to infanticide.
+
+&nbsp;
+&nbsp;
+
 ```{r cub density model - plot, echo = FALSE}
+
+
+
+cub.density.test.data <- hypothesis.test.dataset[!is.na(hypothesis.test.dataset$cub_associates),]
+cub.density.test.data$y <- as.matrix(cub.density.test.data[,c('infanticide', 'starvation', 'lion', 'siblicide','death_of_mother',
+                                                'human','other')])
+
+
 ## Predicted effect of cub density on the probability of infanticide
 pred <- posterior_epred(cub_density_mod, newdata = data.frame(cub_associates = seq(from = 0,
                                                                                      to = max(cub.density.test.data$cub_associates), 
@@ -164,4 +219,4 @@ for(i in 1:7){
 
 ```
 
-
+Figure S6. Predicted probability of mortality (with 95% prediction intervals) due to each source as a function of cub density.

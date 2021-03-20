@@ -62,3 +62,25 @@ get_cub_associates <- function(ids, dates, time.period){
   }
   return(cub.associates)
 }
+
+model_summary <- function(fit){
+  
+  model.summary <- summary(fit)
+  df <- round(model.summary$fixed, 4)
+  rownames(df) <- gsub(rownames(df), pattern = 'mu', replacement = '')
+  
+  df.output <- df[,c('Estimate', 'Est.Error', 'l-95% CI', 'u-95% CI')]
+  df.diagnostic <- df[,c('Rhat', 'Bulk_ESS', 'Tail_ESS')]
+  
+  cat('MODEL SPECIFICATION:\n\n')
+  cat('Family: ', model.summary$formula$family$family, '\n')
+  cat('Formula: ', capture.output(model.summary$formula), '\n')
+  cat('Number of observations: ', model.summary$nobs, '\n')
+  cat('Samples: ', model.summary$chains, 'chains, each with iter = ', model.summary$iter, '; warmup = ', model.summary$warmup, '; thin = ', model.summary$thin, '\n')
+  cat('\nPRIORS:\n\n')
+  print(prior_summary(fit, all = TRUE), show_df = FALSE)
+  cat('\nMODEL OUTPUT:\n')
+  print(df.output)
+  cat('\nMODEL DIAGNOSTICS:\n')
+  print(df.diagnostic)
+}

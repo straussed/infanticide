@@ -1,7 +1,7 @@
 ---
 title: "Supplemental Material for Infanticide by females is a leading source of juvenile mortality in a large social carnivore" 
 #author: Ally K Brown, Malit O Pioon, Kay E Holekamp, Eli D Strauss
-output: word_document
+output: pdf_document
 template: AmNat_supp_template.tex
 ---
 
@@ -11,17 +11,11 @@ library(brms)
 library(dplyr)
 library(bayesplot)
 library(ggplot2)
-load('Data/age_model.RData')
-load('Data/prey_and_cub_models.RData')
-load('Data/known_mortality_cleaned.RData')
-load('Data/cub_data.RData')
-source('000.functions.R')
-
-def.chunk.hook  <- knitr::knit_hooks$get("chunk")
-knitr::knit_hooks$set(chunk = function(x, options) {
-  x <- def.chunk.hook(x, options)
-  ifelse(options$size != "normalsize", paste0("\n \\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
-})
+load('../Data/age_model.RData')
+load('../Data/prey_and_cub_models.RData')
+load('../Data/known_mortality_cleaned.RData')
+load('../Data/cub_data.RData')
+source('../000.functions.R')
 
 
 ```
@@ -30,9 +24,9 @@ knitr::knit_hooks$set(chunk = function(x, options) {
 
 ## 1. Posthumous care by mother
 
-![](Plots/fuzz_event_cropped.png)
+![](../Plots/fuzz_event_cropped.png)
 
-Figure S1. A mother showing posthumous care for her cub that suffered infanticide. She defended it from others, moved it in and out of the den, and groomed it. Note the atypical way she is carrying her cub in panel A; cubs are typically carried by the nape of the neck, as in other carnivores. When observers left her, she was sleeping next to the body of her deceased cub (panel E).
+Figure S1. A mother showing posthumous care for her cub that had suffered infanticide. She defended it from others, moved it in and out of the den, and groomed it. Note the atypical way she is carrying her cub in panel A; cubs are typically carried by the head or the nape of the neck, as in other carnivores. When observers left her, she was sleeping next to the body of her dead cub (panel E).
 
 &nbsp;
 &nbsp;  

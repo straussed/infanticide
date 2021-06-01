@@ -1,8 +1,12 @@
 ---
-title: "Supplemental Material for Infanticide by females is a leading source of juvenile mortality in a large social carnivore" 
-#author: Ally K Brown, Malit O Pioon, Kay E Holekamp, Eli D Strauss
-output: pdf_document
-template: AmNat_supp_template.tex
+title: "Infanticide by females is a leading source of juvenile mortality in a large social carnivore" 
+author: Ally K. Brown^1,4^, Malit O. Pioon^4^, Kay E. Holekamp^1,2,3,4^, Eli D. Strauss^1,2,3,4,5^
+output: 
+  pdf_document
+header-includes: 
+  - \usepackage{fancyhdr}
+  - \pagestyle{fancy}
+  - \fancyhead[LO,LE]{Brown et al., 2021 - Infanticide by females is a leading source of juvenile mortality in a large social carnivore}
 ---
 
 ```{r setup, include=FALSE, echo = FALSE}
@@ -19,6 +23,34 @@ source('../000.functions.R')
 
 
 ```
+
+&nbsp;
+&nbsp;  
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+
+^1^Department of Integrative Biology, Michigan State University, East Lansing, Michigan  
+^2^Program in Ecology, Evolutionary Biology, and Behavior, Michigan State University, East Lansing, Michigan  
+^3^BEACON Center for the Study of Evolution in Action, Michigan State University, East Lansing, Michigan  
+^4^Mara Hyena Project, Michigan State University, Masai Mara National Reserve, Kenya  
+^5^Department of Collective Behavior, Max Planck Institute of Animal Behavior, Konstanz, Germany  
+
+&nbsp;
+&nbsp;  
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+
+Supplemental Material for Brown et al. 2021, *The American Naturalist*  
+
+Correspondence: Eli D Strauss - straussed@gmail.com  
+
+
+
+
 
 \newpage
 

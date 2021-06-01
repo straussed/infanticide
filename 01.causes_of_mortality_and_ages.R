@@ -183,8 +183,7 @@ sum(summarized.mortality[summarized.mortality$mortality == 'infanticide',]$frequ
 
 ### Plotting
 ################################################################################
-png('Plots/prob_mortality_source.png', width = 7, height = 5,
-    res = 400, units = 'in')
+pdf('Plots/prob_mortality_source.pdf', width = 7, height = 5, useDingbats = F)
 par(mfrow = c(2,3),
     mar = c(0,0,0,0),
     oma = c(4,4,1,1), family = 'sans')
@@ -408,8 +407,7 @@ counts <- ggplot(data=summarized.mortality,aes(x=mortality, y = frequency, width
 
 groblist <- list(ggplotGrob(ages), ggplotGrob(counts))
 
-png('Plots/mortality_source_and_age.png', width = 7, height = 5,
-    res = 400, units = 'in')
+pdf('Plots/mortality_source_and_age.pdf', width = 7, height = 5, useDingbats = F)
 grid.arrange(grobs = groblist,
              layout_matrix = matrix(data = c(1,1,1,2,2,
                                              1,1,1,2,2,

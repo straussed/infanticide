@@ -104,8 +104,7 @@ mom.killer.rank$whose <-factor(mom.killer.rank$whose, levels = c('killer', 'mom'
 
 ################################################################################
 ### Plotting
-png(file = 'Plots/Killer_rank.png',width = 3.5, height = 3.5,
-    units = 'in', res = 400)
+pdf(file = 'Plots/Killer_rank.pdf',width = 3.5, height = 3.5, useDingbats = F)
 ggplot(mom.killer.rank, aes(x = whose, y= rank))+
   geom_boxplot(color = 'grey30', size= 1, fill = 'grey85')+
   theme_classic(base_size = 14)+
@@ -137,7 +136,6 @@ cubs <- ggplot(data = hypothesis.test.dataset, aes(x = mortality.plot, y = cub_a
   xlab('Mortality source')
 
 
-png(file = 'Plots/prey_and_cub_mortality.png', width = 7, height = 6,
-    units = 'in', res = 400)
+pdf(file = 'Plots/prey_and_cub_mortality.pdf', width = 7, height = 6, useDingbats = F)
 prey + cubs + plot_layout(ncol = 1)
 dev.off()

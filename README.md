@@ -1,7 +1,5 @@
 ### Infanticide by females is a leading source of juvenile mortality in a large social carnivore
 Code and data for Brown et al. 2021
-
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4889918.svg)](https://doi.org/10.5281/zenodo.4889918)
   
 Abstract  
 Social animals benefit from their group-mates, so why do they sometimes kill each other’s offspring? Using 30 years of data from multiple groups of wild spotted hyenas, we address three critical aims for understanding infanticide in any species: (1) quantify the contribution of infanticide to overall mortality (2) describe the circumstances under which infanticide occurs and (3) evaluate hypotheses about the evolution of infanticide. We find that, although observed only rarely, infanticide is in fact a leading source of juvenile mortality. Infanticide accounted for 24% of juvenile mortality, and 1 in 10 hyenas born in our population perished due to infanticide. In all observed cases of infanticide, killers were adult females, but victims could be of both sexes. Of four hypotheses regarding the evolution of infanticide, we found the most support for the hypothesis that infanticide in spotted hyenas reflects competition over social status among matrilines.
